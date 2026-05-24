@@ -42,7 +42,7 @@ def get_sheet():
               "https://www.googleapis.com/auth/drive"]
     creds_info = json.loads(os.environ["GOOGLE_CREDS_JSON"])
     creds  = Credentials.from_service_account_info(creds_info, scopes=scopes)
-    creds  = Credentials.from_service_account_file(CREDS_FILE, scopes=scopes)
+    
     client = gspread.authorize(creds)
     sp     = client.open_by_key(SHEET_ID)
     month  = datetime.now(pytz.timezone(TIMEZONE)).strftime("%m-%Y")
