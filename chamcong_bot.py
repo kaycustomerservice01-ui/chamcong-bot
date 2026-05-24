@@ -15,8 +15,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # ── CẤU HÌNH ──────────────────────────────────────────────────
-BOT_TOKEN  = "YOUR_BOT_TOKEN_HERE"
-SHEET_ID   = "YOUR_GOOGLE_SHEET_ID_HERE"
+BOT_TOKEN  = "8452164068:AAFKjS2lvZ_nBye1ERzIuDWyDqTrK8IQc9c"
+SHEET_ID   = "1k7yS52nd0HQRWhVDVBm7Xxc9ckARgThy9XFoWznq3oI"
 CREDS_FILE = "credentials.json"
 TIMEZONE   = "Asia/Ho_Chi_Minh"
 
