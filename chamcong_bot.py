@@ -17,7 +17,7 @@ from google.oauth2.service_account import Credentials
 # ── CẤU HÌNH ──────────────────────────────────────────────────
 BOT_TOKEN  = "8452164068:AAFKjS2lvZ_nBye1ERzIuDWyDqTrK8IQc9c"
 SHEET_ID   = "1k7yS52nd0HQRWhVDVBm7Xxc9ckARgThy9XFoWznq3oI"
-CREDS_FILE = "credentials.json"
+
 TIMEZONE   = "Asia/Ho_Chi_Minh"
 
 # Tên ca — chỉ là nhãn, không ràng buộc giờ
@@ -37,8 +37,11 @@ logger = logging.getLogger(__name__)
 
 # ── GOOGLE SHEETS ──────────────────────────────────────────────
 def get_sheet():
+    import os, json
     scopes = ["https://spreadsheets.google.com/feeds",
               "https://www.googleapis.com/auth/drive"]
+    creds_info = json.loads(os.environ["GOOGLE_CREDS_JSON"])
+    creds  = Credentials.from_service_account_info(creds_info, scopes=scopes)
     creds  = Credentials.from_service_account_file(CREDS_FILE, scopes=scopes)
     client = gspread.authorize(creds)
     sp     = client.open_by_key(SHEET_ID)
