@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging, os, json
 import pytz
 from datetime import datetime
@@ -13,10 +14,10 @@ BOT_TOKEN = "8452164068:AAFKjS2lvZ_nBye1ERzIuDWyDqTrK8IQc9c"
 SHEET_ID  = "1k7yS52nd0HQRWhVDVBm7Xxc9ckARgThy9XFoWznq3oI"
 TIMEZONE  = "Asia/Ho_Chi_Minh"
 
-CA_NGAY = "â˜€ï¸ Ca NgÃ y"
-CA_DEM  = "ðŸŒ™ Ca ÄÃªm"
+CA_NGAY = "☀️ Ca Ngày"
+CA_DEM  = "🌙 Ca Đêm"
 
-HEADERS = ["NgÃ y","Thá»©","TÃªn NhÃ¢n ViÃªn","Telegram ID","Ca LÃ m","Loáº¡i","Giá» Check In","Giá» Check Out","Tá»•ng Giá»","Ghi ChÃº"]
+HEADERS = ["Ngày","Thứ","Tên Nhân Viên","Telegram ID","Ca Làm","Loại","Giờ Check In","Giờ Check Out","Tổng Giờ","Ghi Chú"]
 CHON_LOAI, CHON_CA, CHON_NGHI = range(3)
 
 logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO)
@@ -54,13 +55,24 @@ def tinh_tong_gio(gio_in, gio_out):
         return "N/A"
 
 def kb_loai():
-    return ReplyKeyboardMarkup([[KeyboardButton("âœ… Check In"),KeyboardButton("ðŸ”š Check Out")],[KeyboardButton("ðŸ“… Nghá»‰ HÃ´m Nay"),KeyboardButton("ðŸ”„ Cháº¥m BÃ¹")],[KeyboardButton("âŒ Huá»·")]],resize_keyboard=True,one_time_keyboard=True)
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("✅ Check In"), KeyboardButton("📚 Check Out")],
+        [KeyboardButton("📅 Nghỉ Hôm Nay"), KeyboardButton("🔄 Chấm Bù")],
+        [KeyboardButton("❌ Huỷ")]
+    ], resize_keyboard=True, one_time_keyboard=True)
 
 def kb_ca():
-    return ReplyKeyboardMarkup([[KeyboardButton(CA_NGAY),KeyboardButton(CA_DEM)],[KeyboardButton("âŒ Huá»·")]],resize_keyboard=True,one_time_keyboard=True)
+    return ReplyKeyboardMarkup([
+        [KeyboardButton(CA_NGAY), KeyboardButton(CA_DEM)],
+        [KeyboardButton("❌ Huỷ")]
+    ], resize_keyboard=True, one_time_keyboard=True)
 
 def kb_nghi():
-    return ReplyKeyboardMarkup([[KeyboardButton("ðŸ¤’ Nghá»‰ Bá»‡nh"),KeyboardButton("ðŸ“‹ Nghá»‰ PhÃ©p")],[KeyboardButton("ðŸ–ï¸ Nghá»‰ Lá»…"),KeyboardButton("ðŸ“ Viá»‡c CÃ¡ NhÃ¢n")],[KeyboardButton("âŒ Huá»·")]],resize_keyboard=True,one_time_keyboard=True)
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("🤒 Nghỉ Bệnh"), KeyboardButton("📋 Nghỉ Phép")],
+        [KeyboardButton("🏖️ Nghỉ Lễ"), KeyboardButton("📝 Việc Cá Nhân")],
+        [KeyboardButton("❌ Huỷ")]
+    ], resize_keyboard=True, one_time_keyboard=True)
 
 RKR = ReplyKeyboardRemove()
 
@@ -68,40 +80,63 @@ def now_vn():
     return datetime.now(pytz.timezone(TIMEZONE))
 
 def thu_vn(dt):
-    return ["Thá»© Hai","Thá»© Ba","Thá»© TÆ°","Thá»© NÄƒm","Thá»© SÃ¡u","Thá»© Báº£y","Chá»§ Nháº­t"][dt.weekday()]
+    return ["Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy","Chủ Nhật"][dt.weekday()]
 
 async def start(update, ctx):
     u = update.effective_user
-    await update.message.reply_text(f"ðŸ‘‹ Xin chÃ o *{u.full_name}*!\n\nðŸ¤– *Bot Cháº¥m CÃ´ng*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“Œ Lá»‡nh:\n  /chamcong â€” Cháº¥m cÃ´ng\n  /lichsu   â€” Lá»‹ch sá»­ hÃ´m nay\n  /help     â€” HÆ°á»›ng dáº«n\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ’¡ Nháº¥n /chamcong Ä‘á»ƒ báº¯t Ä‘áº§u!",parse_mode="Markdown")
+    await update.message.reply_text(
+        f"👋 Xin chào *{u.full_name}*!\n\n"
+        f"🤖 *Bot Chấm Công*\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"📌 Lệnh:\n"
+        f"  /chamcong – Chấm công\n"
+        f"  /lichsu   – Lịch sử hôm nay\n"
+        f"  /help     – Hướng dẫn\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"💡 Nhấn /chamcong để bắt đầu!",
+        parse_mode="Markdown"
+    )
 
 async def help_cmd(update, ctx):
-    await update.message.reply_text("ðŸ“– *HÆ¯á»šNG DáºªN*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n1ï¸âƒ£ /chamcong\n2ï¸âƒ£ Chá»n: Check In / Check Out / Nghá»‰ / Cháº¥m BÃ¹\n3ï¸âƒ£ Chá»n ca: Ca NgÃ y hoáº·c Ca ÄÃªm\n4ï¸âƒ£ Bot ghi tá»± Ä‘á»™ng vÃ o Google Sheet âœ…",parse_mode="Markdown")
+    await update.message.reply_text(
+        "📖 *HƯỚNG DẪN*\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "1️⃣ /chamcong\n"
+        "2️⃣ Chọn: Check In / Check Out / Nghỉ / Chấm Bù\n"
+        "3️⃣ Chọn ca: Ca Ngày hoặc Ca Đêm\n"
+        "4️⃣ Bot ghi tự động vào Google Sheet ✅",
+        parse_mode="Markdown"
+    )
 
 async def chamcong_start(update, ctx):
-    await update.message.reply_text("ðŸ“‹ *Chá»n loáº¡i cháº¥m cÃ´ng:*",parse_mode="Markdown",reply_markup=kb_loai())
+    await update.message.reply_text(
+        "📋 *Chọn loại chấm công:*",
+        parse_mode="Markdown",
+        reply_markup=kb_loai()
+    )
     return CHON_LOAI
 
 async def chon_loai(update, ctx):
     text = update.message.text.strip()
-    if text == "âŒ Huá»·":
-        await update.message.reply_text("âŒ ÄÃ£ huá»·.",reply_markup=RKR)
+    if text == "❌ Huỷ":
+        await update.message.reply_text("❌ Đã huỷ.", reply_markup=RKR)
         return ConversationHandler.END
     ctx.user_data["loai"] = text
-    if "Nghá»‰" in text and "Cháº¥m BÃ¹" not in text:
-        await update.message.reply_text("ðŸ“ *Chá»n lÃ½ do nghá»‰:*",parse_mode="Markdown",reply_markup=kb_nghi())
+    if "Nghỉ" in text and "Chấm Bù" not in text:
+        await update.message.reply_text("📝 *Chọn lý do nghỉ:*", parse_mode="Markdown", reply_markup=kb_nghi())
         return CHON_NGHI
-    await update.message.reply_text("ðŸ• *Chá»n ca lÃ m viá»‡c:*",parse_mode="Markdown",reply_markup=kb_ca())
+    await update.message.reply_text("🕐 *Chọn ca làm việc:*", parse_mode="Markdown", reply_markup=kb_ca())
     return CHON_CA
 
 async def chon_ca(update, ctx):
     ca   = update.message.text.strip()
     user = update.effective_user
-    loai = ctx.user_data.get("loai","")
-    if ca == "âŒ Huá»·":
-        await update.message.reply_text("âŒ ÄÃ£ huá»·.",reply_markup=RKR)
+    loai = ctx.user_data.get("loai", "")
+    if ca == "❌ Huỷ":
+        await update.message.reply_text("❌ Đã huỷ.", reply_markup=RKR)
         return ConversationHandler.END
     if ca not in [CA_NGAY, CA_DEM]:
-        await update.message.reply_text("âš ï¸ Chá»n ca há»£p lá»‡.",reply_markup=kb_ca())
+        await update.message.reply_text("⚠️ Chọn ca hợp lệ.", reply_markup=kb_ca())
         return CHON_CA
     dt   = now_vn()
     gio  = dt.strftime("%H:%M:%S")
@@ -112,52 +147,97 @@ async def chon_ca(update, ctx):
         if "Check In" in loai:
             idx, existing = tim_dong(sheet, user.id, ca)
             if existing and existing[6]:
-                await update.message.reply_text(f"âš ï¸ ÄÃ£ Check In *{ca}* lÃºc *{existing[6]}*!",parse_mode="Markdown",reply_markup=RKR)
+                await update.message.reply_text(f"⚠️ Đã Check In *{ca}* lúc *{existing[6]}*!", parse_mode="Markdown", reply_markup=RKR)
                 return ConversationHandler.END
-            sheet.append_row([ngay,thu,user.full_name or user.username or "Unknown",str(user.id),ca,"Check In",gio,"","",""])
-            await update.message.reply_text(f"âœ… *CHECK IN*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ‘¤ {user.full_name}\nðŸ†” `{user.id}`\nðŸ“… {thu}, {ngay}\nðŸ• Giá» vÃ o: *{gio}*\nðŸ·ï¸ {ca}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“Š ÄÃ£ ghi Google Sheet âœ”ï¸",parse_mode="Markdown",reply_markup=RKR)
+            sheet.append_row([ngay, thu, user.full_name or user.username or "Unknown", str(user.id), ca, "Check In", gio, "", "", ""])
+            await update.message.reply_text(
+                f"✅ *CHECK IN*\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"👤 {user.full_name}\n"
+                f"🆔 `{user.id}`\n"
+                f"📅 {thu}, {ngay}\n"
+                f"🕐 Giờ vào: *{gio}*\n"
+                f"🏷️ {ca}\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"📊 Đã ghi Google Sheet ✔️",
+                parse_mode="Markdown", reply_markup=RKR
+            )
         elif "Check Out" in loai:
             idx, existing = tim_dong(sheet, user.id, ca)
             if not existing:
-                await update.message.reply_text(f"âš ï¸ ChÆ°a cÃ³ Check In cho *{ca}* hÃ´m nay!",parse_mode="Markdown",reply_markup=RKR)
+                await update.message.reply_text(f"⚠️ Chưa có Check In cho *{ca}* hôm nay!", parse_mode="Markdown", reply_markup=RKR)
                 return ConversationHandler.END
             if existing[7]:
-                await update.message.reply_text(f"âš ï¸ ÄÃ£ Check Out lÃºc *{existing[7]}* rá»“i!",parse_mode="Markdown",reply_markup=RKR)
+                await update.message.reply_text(f"⚠️ Đã Check Out lúc *{existing[7]}* rồi!", parse_mode="Markdown", reply_markup=RKR)
                 return ConversationHandler.END
             tong = tinh_tong_gio(existing[6], gio)
             sheet.update_cell(idx, 8, gio)
             sheet.update_cell(idx, 9, tong)
-            await update.message.reply_text(f"ðŸ”š *CHECK OUT*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ‘¤ {user.full_name}\nðŸ†” `{user.id}`\nðŸ“… {thu}, {ngay}\nðŸ• VÃ o:  *{existing[6]}*\nðŸ•• Ra:   *{gio}*\nâ±ï¸ Tá»•ng: *{tong}*\nðŸ·ï¸ {ca}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“Š ÄÃ£ cáº­p nháº­t Google Sheet âœ”ï¸",parse_mode="Markdown",reply_markup=RKR)
-        elif "Cháº¥m BÃ¹" in loai:
-            sheet.append_row([ngay,thu,user.full_name or user.username or "Unknown",str(user.id),ca,"Cháº¥m BÃ¹",gio,"","","LÃ m bÃ¹"])
-            await update.message.reply_text(f"ðŸ”„ *CHáº¤M BÃ™*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ‘¤ {user.full_name}\nðŸ†” `{user.id}`\nðŸ“… {thu}, {ngay}\nðŸ• Báº¯t Ä‘áº§u: *{gio}*\nðŸ·ï¸ {ca}\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“Š ÄÃ£ ghi Google Sheet âœ”ï¸",parse_mode="Markdown",reply_markup=RKR)
+            await update.message.reply_text(
+                f"📚 *CHECK OUT*\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"👤 {user.full_name}\n"
+                f"🆔 `{user.id}`\n"
+                f"📅 {thu}, {ngay}\n"
+                f"🕐 Vào:  *{existing[6]}*\n"
+                f"🕔 Ra:   *{gio}*\n"
+                f"⏱️ Tổng: *{tong}*\n"
+                f"🏷️ {ca}\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"📊 Đã cập nhật Google Sheet ✔️",
+                parse_mode="Markdown", reply_markup=RKR
+            )
+        elif "Chấm Bù" in loai:
+            sheet.append_row([ngay, thu, user.full_name or user.username or "Unknown", str(user.id), ca, "Chấm Bù", gio, "", "", "Làm bù"])
+            await update.message.reply_text(
+                f"🔄 *CHẤM BÙ*\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"👤 {user.full_name}\n"
+                f"🆔 `{user.id}`\n"
+                f"📅 {thu}, {ngay}\n"
+                f"🕐 Bắt đầu: *{gio}*\n"
+                f"🏷️ {ca}\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"📊 Đã ghi Google Sheet ✔️",
+                parse_mode="Markdown", reply_markup=RKR
+            )
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(f"âŒ Lá»—i káº¿t ná»‘i Sheet!\n`{str(e)[:120]}`",parse_mode="Markdown",reply_markup=RKR)
+        await update.message.reply_text(f"❌ Lỗi kết nối Sheet!\n`{str(e)[:120]}`", parse_mode="Markdown", reply_markup=RKR)
     return ConversationHandler.END
 
 async def chon_nghi(update, ctx):
     ly_do = update.message.text.strip()
     user  = update.effective_user
-    if ly_do == "âŒ Huá»·":
-        await update.message.reply_text("âŒ ÄÃ£ huá»·.",reply_markup=RKR)
+    if ly_do == "❌ Huỷ":
+        await update.message.reply_text("❌ Đã huỷ.", reply_markup=RKR)
         return ConversationHandler.END
     dt   = now_vn()
     ngay = dt.strftime("%d/%m/%Y")
     thu  = thu_vn(dt)
     gio  = dt.strftime("%H:%M:%S")
-    ghi_chu = ly_do.replace("ðŸ¤’ ","").replace("ðŸ“‹ ","").replace("ðŸ–ï¸ ","").replace("ðŸ“ ","")
+    ghi_chu = ly_do.replace("🤒 ", "").replace("📋 ", "").replace("🏖️ ", "").replace("📝 ", "")
     try:
         sheet = get_sheet()
-        sheet.append_row([ngay,thu,user.full_name or user.username or "Unknown",str(user.id),"â€”","Nghá»‰",gio,"","",ghi_chu])
-        await update.message.reply_text(f"ðŸ“… *ÄÄ‚NG KÃ NGHá»ˆ*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ‘¤ {user.full_name}\nðŸ†” `{user.id}`\nðŸ“… {thu}, {ngay}\nðŸ“ LÃ½ do: *{ghi_chu}*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\nðŸ“Š ÄÃ£ ghi Google Sheet âœ”ï¸",parse_mode="Markdown",reply_markup=RKR)
+        sheet.append_row([ngay, thu, user.full_name or user.username or "Unknown", str(user.id), "–", "Nghỉ", gio, "", "", ghi_chu])
+        await update.message.reply_text(
+            f"📅 *ĐĂNG KÝ NGHỈ*\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"👤 {user.full_name}\n"
+            f"🆔 `{user.id}`\n"
+            f"📅 {thu}, {ngay}\n"
+            f"📝 Lý do: *{ghi_chu}*\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"📊 Đã ghi Google Sheet ✔️",
+            parse_mode="Markdown", reply_markup=RKR
+        )
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text(f"âŒ Lá»—i: `{str(e)[:120]}`",parse_mode="Markdown",reply_markup=RKR)
+        await update.message.reply_text(f"❌ Lỗi: `{str(e)[:120]}`", parse_mode="Markdown", reply_markup=RKR)
     return ConversationHandler.END
 
 async def huy(update, ctx):
-    await update.message.reply_text("âŒ ÄÃ£ huá»·.",reply_markup=RKR)
+    await update.message.reply_text("❌ Đã huỷ.", reply_markup=RKR)
     return ConversationHandler.END
 
 async def lichsu(update, ctx):
@@ -165,30 +245,37 @@ async def lichsu(update, ctx):
     hom_nay = now_vn().strftime("%d/%m/%Y")
     try:
         sheet = get_sheet()
-        rows  = [r for r in sheet.get_all_values()[1:] if len(r)>=4 and r[0]==hom_nay and r[3]==str(user.id)]
+        rows  = [r for r in sheet.get_all_values()[1:] if len(r) >= 4 and r[0] == hom_nay and r[3] == str(user.id)]
         if not rows:
-            await update.message.reply_text(f"ðŸ“­ ChÆ°a cÃ³ dá»¯ liá»‡u hÃ´m nay ({hom_nay}).",reply_markup=RKR)
+            await update.message.reply_text(f"🔭 Chưa có dữ liệu hôm nay ({hom_nay}).", reply_markup=RKR)
             return
-        msg = f"ðŸ“Š *Lá»‹ch sá»­ â€” {hom_nay}*\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n"
+        msg = f"📊 *Lịch sử – {hom_nay}*\n━━━━━━━━━━━━━━━━━━\n"
         for r in rows:
-            msg += f"\nðŸ·ï¸ *{r[5] if len(r)>5 else 'â€”'}* | {r[4] if len(r)>4 else 'â€”'}\n   ðŸ• {r[6] if len(r)>6 else 'â€”'}  â†’  ðŸ•• {r[7] if len(r)>7 else 'ChÆ°a out'}\n   â±ï¸ {r[8] if len(r)>8 else 'â€”'}\n"
-            if len(r)>9 and r[9]: msg += f"   ðŸ“ {r[9]}\n"
-        await update.message.reply_text(msg,parse_mode="Markdown")
+            msg += f"\n🏷️ *{r[5] if len(r)>5 else '–'}* | {r[4] if len(r)>4 else '–'}\n"
+            msg += f"   🕐 {r[6] if len(r)>6 else '–'}  →  🕔 {r[7] if len(r)>7 else 'Chưa out'}\n"
+            msg += f"   ⏱️ {r[8] if len(r)>8 else '–'}\n"
+            if len(r) > 9 and r[9]:
+                msg += f"   📝 {r[9]}\n"
+        await update.message.reply_text(msg, parse_mode="Markdown")
     except Exception as e:
-        await update.message.reply_text(f"âŒ Lá»—i: `{str(e)[:120]}`",parse_mode="Markdown")
+        await update.message.reply_text(f"❌ Lỗi: `{str(e)[:120]}`", parse_mode="Markdown")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     conv = ConversationHandler(
         entry_points=[CommandHandler("chamcong", chamcong_start)],
-        states={CHON_LOAI:[MessageHandler(filters.TEXT&~filters.COMMAND,chon_loai)],CHON_CA:[MessageHandler(filters.TEXT&~filters.COMMAND,chon_ca)],CHON_NGHI:[MessageHandler(filters.TEXT&~filters.COMMAND,chon_nghi)]},
-        fallbacks=[CommandHandler("huy",huy)],
+        states={
+            CHON_LOAI: [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_loai)],
+            CHON_CA:   [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_ca)],
+            CHON_NGHI: [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_nghi)],
+        },
+        fallbacks=[CommandHandler("huy", huy)],
     )
-    app.add_handler(CommandHandler("start",start))
-    app.add_handler(CommandHandler("help",help_cmd))
-    app.add_handler(CommandHandler("lichsu",lichsu))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("lichsu", lichsu))
     app.add_handler(conv)
-    logger.info("âœ… Bot Ä‘ang cháº¡y...")
+    logger.info("✅ Bot đang chạy...")
     app.run_polling()
 
 if __name__ == "__main__":
