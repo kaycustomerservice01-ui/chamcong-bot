@@ -126,7 +126,12 @@ async def help_cmd(update, ctx):
         parse_mode="Markdown"
     )
 
+async def reset(update, ctx):
+    ctx.user_data.clear()
+    await update.message.reply_text("♻️ Đã reset! Thử /chamcong lại nhé.", reply_markup=RKR)
+
 async def chamcong_start(update, ctx):
+    ctx.user_data.clear()
     await update.message.reply_text(
         "📋 *Chọn loại chấm công:*",
         parse_mode="Markdown",
@@ -336,8 +341,6 @@ async def lichsu(update, ctx):
     except Exception as e:
         await update.message.reply_text(f"❌ Lỗi: `{str(e)[:120]}`", parse_mode="Markdown")
 
-# ─── Nhắc nhở tự động ───────────────────────────────────────────
-
 async def nhac_6h(ctx):
     await ctx.bot.send_message(
         chat_id=GROUP_ID,
@@ -369,9 +372,8 @@ async def nhac_9h(ctx):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Job nhắc nhở tự động
-    tz = pytz.timezone(TIMEZONE)
     from datetime import time as dtime
+    tz = pytz.timezone(TIMEZONE)
     app.job_queue.run_daily(nhac_6h, time=dtime(6, 0, 0, tzinfo=tz))
     app.job_queue.run_daily(nhac_9h, time=dtime(9, 0, 0, tzinfo=tz))
 
@@ -389,6 +391,7 @@ def main():
     )
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("reset", reset))
     app.add_handler(CommandHandler("lichsu", lichsu))
     app.add_handler(conv)
     logger.info("✅ Bot đang chạy...")
@@ -396,4 +399,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-# update v2
+
+# update v3
