@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging, os, json
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
@@ -10,15 +10,16 @@ from telegram.ext import (
 import gspread
 from google.oauth2.service_account import Credentials
 
-BOT_TOKEN = "8452164068:AAFKjS2lvZ_nBye1ERzIuDWyDqTrK8IQc9c"
-SHEET_ID  = "1k7yS52nd0HQRWhVDVBm7Xxc9ckARgThy9XFoWznq3oI"
-TIMEZONE  = "Asia/Ho_Chi_Minh"
+BOT_TOKEN  = "8452164068:AAFKjS2lvZ_nBye1ERzIuDWyDqTrK8IQc9c"
+SHEET_ID   = "1k7yS52nd0HQRWhVDVBm7Xxc9ckARgThy9XFoWznq3oI"
+TIMEZONE   = "Asia/Ho_Chi_Minh"
+GROUP_ID   = -5113728440
 
 CA_NGAY = "☀️ Ca Ngày"
 CA_DEM  = "🌙 Ca Đêm"
 
 HEADERS = ["Ngày","Thứ","Tên Nhân Viên","Telegram ID","Ca Làm","Loại","Giờ Check In","Giờ Check Out","Tổng Giờ","Ghi Chú"]
-CHON_LOAI, CHON_CA, CHON_NGHI = range(3)
+CHON_LOAI, CHON_CA, CHON_NGHI, CHON_NGAY_BU, CHON_CA_BU, NHAP_LY_DO_BU = range(6)
 
 logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -74,6 +75,23 @@ def kb_nghi():
         [KeyboardButton("❌ Huỷ")]
     ], resize_keyboard=True, one_time_keyboard=True)
 
+def kb_ngay_bu():
+    tz = pytz.timezone(TIMEZONE)
+    hom_nay = datetime.now(tz)
+    buttons = []
+    row = []
+    for i in range(1, 31):
+        ngay = hom_nay - timedelta(days=i)
+        label = ngay.strftime("%d/%m")
+        row.append(KeyboardButton(f"📅 {label}"))
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    buttons.append([KeyboardButton("❌ Huỷ")])
+    return ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=True)
+
 RKR = ReplyKeyboardRemove()
 
 def now_vn():
@@ -125,8 +143,80 @@ async def chon_loai(update, ctx):
     if "Nghỉ" in text and "Chấm Bù" not in text:
         await update.message.reply_text("📝 *Chọn lý do nghỉ:*", parse_mode="Markdown", reply_markup=kb_nghi())
         return CHON_NGHI
+    if "Chấm Bù" in text:
+        await update.message.reply_text(
+            "📅 *Chọn ngày cần chấm bù:*\n_(Chọn ngày bạn quên chấm công)_",
+            parse_mode="Markdown",
+            reply_markup=kb_ngay_bu()
+        )
+        return CHON_NGAY_BU
     await update.message.reply_text("🕐 *Chọn ca làm việc:*", parse_mode="Markdown", reply_markup=kb_ca())
     return CHON_CA
+
+async def chon_ngay_bu(update, ctx):
+    text = update.message.text.strip()
+    if text == "❌ Huỷ":
+        await update.message.reply_text("❌ Đã huỷ.", reply_markup=RKR)
+        return ConversationHandler.END
+    try:
+        label = text.replace("📅 ", "").strip()
+        day, month = label.split("/")
+        year = now_vn().year
+        ngay_bu = f"{day}/{month}/{year}"
+        ctx.user_data["ngay_bu"] = ngay_bu
+    except:
+        await update.message.reply_text("⚠️ Chọn ngày hợp lệ.", reply_markup=kb_ngay_bu())
+        return CHON_NGAY_BU
+    await update.message.reply_text("🕐 *Chọn ca cần chấm bù:*", parse_mode="Markdown", reply_markup=kb_ca())
+    return CHON_CA_BU
+
+async def chon_ca_bu(update, ctx):
+    ca = update.message.text.strip()
+    if ca == "❌ Huỷ":
+        await update.message.reply_text("❌ Đã huỷ.", reply_markup=RKR)
+        return ConversationHandler.END
+    if ca not in [CA_NGAY, CA_DEM]:
+        await update.message.reply_text("⚠️ Chọn ca hợp lệ.", reply_markup=kb_ca())
+        return CHON_CA_BU
+    ctx.user_data["ca_bu"] = ca
+    await update.message.reply_text(
+        "📝 *Nhập lý do chấm bù:*\n_(Ví dụ: Quên chấm công, Đi trễ, ...)_",
+        parse_mode="Markdown",
+        reply_markup=RKR
+    )
+    return NHAP_LY_DO_BU
+
+async def nhap_ly_do_bu(update, ctx):
+    ly_do   = update.message.text.strip()
+    user    = update.effective_user
+    ngay_bu = ctx.user_data.get("ngay_bu", "")
+    ca_bu   = ctx.user_data.get("ca_bu", "")
+    gio     = now_vn().strftime("%H:%M:%S")
+    try:
+        dt_bu  = datetime.strptime(ngay_bu, "%d/%m/%Y")
+        thu_bu = thu_vn(dt_bu)
+    except:
+        thu_bu = "–"
+    try:
+        sheet = get_sheet()
+        sheet.append_row([ngay_bu, thu_bu, user.full_name or user.username or "Unknown", str(user.id), ca_bu, "Chấm Bù", gio, "", "", ly_do])
+        await update.message.reply_text(
+            f"🔄 *CHẤM BÙ*\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"👤 {user.full_name}\n"
+            f"🆔 `{user.id}`\n"
+            f"📅 Ngày bù: *{ngay_bu}*\n"
+            f"🏷️ {ca_bu}\n"
+            f"📝 Lý do: *{ly_do}*\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"✅ Đã ghi nhận chấm bù thành công!\n"
+            f"⏰ Lần sau anh/chị nhớ chấm công đúng giờ để tránh thiếu công nhé 😊",
+            parse_mode="Markdown", reply_markup=RKR
+        )
+    except Exception as e:
+        logger.error(e)
+        await update.message.reply_text(f"❌ Lỗi: `{str(e)[:120]}`", parse_mode="Markdown", reply_markup=RKR)
+    return ConversationHandler.END
 
 async def chon_ca(update, ctx):
     ca   = update.message.text.strip()
@@ -159,7 +249,7 @@ async def chon_ca(update, ctx):
                 f"🕐 Giờ vào: *{gio}*\n"
                 f"🏷️ {ca}\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
-                f"📊 Đã ghi Google Sheet ✔️",
+                f"☀️ Chúc bạn có ngày làm việc vui vẻ và hiệu quả! 💪",
                 parse_mode="Markdown", reply_markup=RKR
             )
         elif "Check Out" in loai:
@@ -184,21 +274,7 @@ async def chon_ca(update, ctx):
                 f"⏱️ Tổng: *{tong}*\n"
                 f"🏷️ {ca}\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
-                f"📊 Đã cập nhật Google Sheet ✔️",
-                parse_mode="Markdown", reply_markup=RKR
-            )
-        elif "Chấm Bù" in loai:
-            sheet.append_row([ngay, thu, user.full_name or user.username or "Unknown", str(user.id), ca, "Chấm Bù", gio, "", "", "Làm bù"])
-            await update.message.reply_text(
-                f"🔄 *CHẤM BÙ*\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"👤 {user.full_name}\n"
-                f"🆔 `{user.id}`\n"
-                f"📅 {thu}, {ngay}\n"
-                f"🕐 Bắt đầu: *{gio}*\n"
-                f"🏷️ {ca}\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"📊 Đã ghi Google Sheet ✔️",
+                f"🌙 Cảm ơn bạn đã cống hiến hôm nay! Nghỉ ngơi vui vẻ nhé! 🎉",
                 parse_mode="Markdown", reply_markup=RKR
             )
     except Exception as e:
@@ -260,14 +336,54 @@ async def lichsu(update, ctx):
     except Exception as e:
         await update.message.reply_text(f"❌ Lỗi: `{str(e)[:120]}`", parse_mode="Markdown")
 
+# ─── Nhắc nhở tự động ───────────────────────────────────────────
+
+async def nhac_6h(ctx):
+    await ctx.bot.send_message(
+        chat_id=GROUP_ID,
+        text=(
+            "📢 *NHẮC NHỞ CHẤM CÔNG*\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "🌤️ Chúc các bạn ngày mới vui vẻ!\n"
+            "⏰ Đã 6:00 sáng rồi! Mọi người nhớ chấm công đầy đủ để tránh thiếu công nhé 💪\n"
+            "Chúc mọi người một ngày làm việc hiệu quả 🌤️\n"
+            "━━━━━━━━━━━━━━━━━━"
+        ),
+        parse_mode="Markdown"
+    )
+
+async def nhac_9h(ctx):
+    await ctx.bot.send_message(
+        chat_id=GROUP_ID,
+        text=(
+            "📢 *THÔNG BÁO CHƯA CHẤM CÔNG*\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⚠️ Hệ thống ghi nhận vẫn còn nhân viên chưa chấm công hôm nay.\n"
+            "Mọi người vui lòng kiểm tra và chấm công sớm giúp admin nhé ⏰\n"
+            "Tránh trường hợp quên chấm dẫn đến phải chấm bù ạ 😊\n"
+            "━━━━━━━━━━━━━━━━━━"
+        ),
+        parse_mode="Markdown"
+    )
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+
+    # Job nhắc nhở tự động
+    tz = pytz.timezone(TIMEZONE)
+    from datetime import time as dtime
+    app.job_queue.run_daily(nhac_6h, time=dtime(6, 0, 0, tzinfo=tz))
+    app.job_queue.run_daily(nhac_9h, time=dtime(9, 0, 0, tzinfo=tz))
+
     conv = ConversationHandler(
         entry_points=[CommandHandler("chamcong", chamcong_start)],
         states={
-            CHON_LOAI: [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_loai)],
-            CHON_CA:   [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_ca)],
-            CHON_NGHI: [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_nghi)],
+            CHON_LOAI:     [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_loai)],
+            CHON_CA:       [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_ca)],
+            CHON_NGHI:     [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_nghi)],
+            CHON_NGAY_BU:  [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_ngay_bu)],
+            CHON_CA_BU:    [MessageHandler(filters.TEXT & ~filters.COMMAND, chon_ca_bu)],
+            NHAP_LY_DO_BU: [MessageHandler(filters.TEXT & ~filters.COMMAND, nhap_ly_do_bu)],
         },
         fallbacks=[CommandHandler("huy", huy)],
     )
